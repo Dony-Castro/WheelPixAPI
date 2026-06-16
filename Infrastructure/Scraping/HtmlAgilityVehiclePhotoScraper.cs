@@ -13,6 +13,16 @@ public sealed class HtmlAgilityVehiclePhotoScraper : IVehiclePhotoScraper
     {
         _httpClient = httpClient;
         _options = options.Value;
+
+        if (string.IsNullOrWhiteSpace(_options.SourceUrlTemplate))
+        {
+            throw new InvalidOperationException("Scraping:SourceUrlTemplate must be configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.ImageXPath))
+        {
+            throw new InvalidOperationException("Scraping:ImageXPath must be configured.");
+        }
     }
 
     public async Task<IReadOnlyList<string>> ScrapeAsync(string make, string model, int? year, CancellationToken cancellationToken = default)
@@ -23,13 +33,16 @@ public sealed class HtmlAgilityVehiclePhotoScraper : IVehiclePhotoScraper
         var doc = new HtmlDocument();
         doc.LoadHtml(html);
 
-        var imageNodes = doc.DocumentNode.SelectNodes(_options.ImageXPath);
+        var imageNodes = doc.DocumentNode.SelectNodes(_options.ImageXPath!);
         if (imageNodes is null)
         {
             return Array.Empty<string>();
         }
 
-        var maxResults = Math.Clamp(_options.MaxResults, 1, 50);
+        var maxAllowedResults = _options.MaxAllowedResults < 1
+            ? ScrapingOptions.DefaultMaxAllowedResults
+            : _options.MaxAllowedResults;
+        var maxResults = Math.Clamp(_options.MaxResults, 1, maxAllowedResults);
 
         return imageNodes
             .Select(node => node.GetAttributeValue("src", string.Empty).Trim())
@@ -42,7 +55,7 @@ public sealed class HtmlAgilityVehiclePhotoScraper : IVehiclePhotoScraper
 
     private string BuildUrl(string make, string model, int? year)
     {
-        return _options.SourceUrlTemplate
+        return _options.SourceUrlTemplate!
             .Replace("{make}", Uri.EscapeDataString(make), StringComparison.OrdinalIgnoreCase)
             .Replace("{model}", Uri.EscapeDataString(model), StringComparison.OrdinalIgnoreCase)
             .Replace("{year}", year?.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);

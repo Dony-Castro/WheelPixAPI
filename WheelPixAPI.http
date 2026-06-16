@@ -1,0 +1,6 @@
+@WheelPixAPI_HostAddress = http://localhost:5231
+
+GET {{WheelPixAPI_HostAddress}}/api/vehicle-photos?make=toyota&model=corolla&year=2020
+Accept: application/json
+
+###
